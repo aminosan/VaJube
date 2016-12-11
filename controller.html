@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>VaJube</title>
+  <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+  <script type="text/javascript" src="./poormidi.js"></script>
+  <script type="text/javascript" src="./const.js"></script>
+  <script type="text/javascript">
+    // Youtubeプレイヤーの定数使うためだけにプレイヤーのスクリプトをロード
+    // 将来的にはコントローラ側でロード前にプレビューが見れるようにしたい気もする
+    var tag = document.createElement('script');
+
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+  </script>
+  <script type="text/javascript">
+    // プレイヤー側を開く
+    var player = window.open('./player.html', 'player');
+
+    function changeValueCrossFader(value) {
+      // リニアに遷移させるとしっくりこないのでCカーブっぽくする
+      opa_deck_a = Math.floor(Math.pow(1-value, 1/3) * 100)/100;
+      opa_deck_b = Math.floor(Math.pow(value, 1/3) * 100)/100;
+      $(player.document).find('#deck_a').css('opacity', opa_deck_a);
+      $(player.document).find('#deck_b').css('opacity', opa_deck_b);
+    }
+
+    // MIDIコントローラ系
+    var midi = new poormidi();
+    midi.setHandler(onMIDIEvent);
+
+    function onMIDIEvent(e){
+      var message = e.data[0] & 0xf0;
+      var note = e.data[1];
+      var velocity = e.data[2];
+
+      console.log('Message:'+message);
+      console.log('Note:'+note);
+      console.log('Velocity:'+velocity);
+
+      if (message === 0x90) { // NoteONを受け取ったとき
+        // DeckA Stop/Start
+        if (note === DECK_A_PLAY && velocity !== 0x0) {
+          if (player.getPlayerStatus('deck_a') == YT.PlayerState.PLAYING) {
+            player.pauseVideo('deck_a');
+            midi.sendNoteOn(DECK_A_PLAY, 0);
+          } else if (player.getPlayerStatus('deck_a') == YT.PlayerState.PAUSED) {
+            player.playVideo('deck_a');
+            midi.sendNoteOn(DECK_A_PLAY, 127);
+          }
+        }
+        // DeckB Stop/Start
+        if (note === DECK_B_PLAY && velocity !== 0x0) {
+          if (player.getPlayerStatus('deck_b') == YT.PlayerState.PLAYING) {
+            player.pauseVideo('deck_b');
+            midi.sendNoteOn(DECK_B_PLAY, 0);
+          } else if (player.getPlayerStatus('deck_b') == YT.PlayerState.PAUSED) {
+            player.playVideo('deck_b');
+            midi.sendNoteOn(DECK_B_PLAY, 127);
+          }
+        }
+      } else if (message === 0xB0) { // コントロールチェンジを受け取ったとき
+        switch (note) {
+          case CROSS_FADER:
+            changeValueCrossFader(1 - conversion_value(velocity, 1));
+          case DECK_A_JOG:
+            // ジョグで動画をシークできるようにしてみたけど、動作がいまいち
+            if (velocity >= 1 && velocity <= 63) {
+              // Prev
+              player.seekTo('deck_a', player.getCurrentTime('deck_a') - 0.2);
+            } else {
+              // Fwd
+              player.seekTo('deck_a', player.getCurrentTime('deck_a') + 0.2);
+            }
+            break;
+          case DECK_B_JOG:
+            if (velocity >= 1 && velocity <= 63) {
+              // Prev
+              player.seekTo('deck_b', player.getCurrentTime('deck_b') - 0.2);
+            } else {
+              // Fwd
+              player.seekTo('deck_b', player.getCurrentTime('deck_b') + 0.2);
+            }
+            break;
+          case EQ_HI:
+            value = Math.ceil(conversion_value(velocity, 200));
+            if (value > 101) value = value * 1.5;
+            $(player.document).find('#fx').css('filter', 'saturate(' + value + '%)');
+            break;
+          case EQ_MID:
+            value = Math.ceil(conversion_value(velocity, 180, -180));
+            if (value > 101) value = value * 1.5;
+            $(player.document).find('#fx').css('filter', 'hue-rotate(' + value + 'deg)');
+            break;
+        }
+      }
+    }
+
+    // MIDIは0-127なので、数値の範囲を変換するやつ
+    function conversion_value(value, newMax, newMin = 0, oldMax = 127, oldMin = 0) {
+      return (((value - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) + newMin;
+    }
+
+    function loadDeck(deckname) {
+      player.loadVideoById(deckname, $('#video_id').val());
+    }
+  </script>
+</head>
+<body>
+<input type="text" id="video_id">
+<input type="button" onclick="loadDeck('deck_a')" value="Load DeckA">
+<input type="button" onclick="loadDeck('deck_b')" value="Load DeckB">
+</body>
+</html>

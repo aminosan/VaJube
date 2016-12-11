@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>VaJube</title>
+  <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+  <style type="text/css">
+    body {
+      background-color: black;
+    }
+    iframe {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="fx">
+    <div id="deck_a"></div>
+    <div id="deck_b"></div>
+  </div>
+
+  <script type="text/javascript">
+    var tag = document.createElement('script');
+
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    var deck_a;
+    var deck_b;
+    function onYouTubeIframeAPIReady() {
+      deck_a = new YT.Player('deck_a', {
+        height: '360',
+        width: '640',
+        videoId: 'I39RKjerJss',
+        events: {
+          'onReady': onPlayerReadyDeckA,
+          'onStateChange': onPlayerStateChangeDeckA
+        },
+        playerVars: {
+          controls: 0,
+          rel: 0,
+          showinfo: 0,
+          modestbranding: 1
+        }
+      });
+      deck_b = new YT.Player('deck_b', {
+        height: '360',
+        width: '640',
+        videoId: 'MOoYB-loWko',
+        events: {
+          'onReady': onPlayerReadyDeckB,
+          'onStateChange': onPlayerStateChangeDeckB
+        },
+        playerVars: {
+          controls: 0,
+          rel: 0,
+          showinfo: 0,
+          modestbranding: 1
+        }
+      });
+    }
+
+    function onPlayerReadyDeckA(event) {
+      event.target.mute();
+      event.target.playVideo();
+    }
+
+    var done_deck_a = false;
+    function onPlayerStateChangeDeckA(event) {
+      if (event.data == YT.PlayerState.ENDED) {
+        deck_a.seekTo(0, true);
+        deck_a.playVideo();
+      }
+    }
+
+    function onPlayerReadyDeckB(event) {
+      event.target.mute();
+      event.target.playVideo();
+    }
+
+    var done_deck_b = false;
+    function onPlayerStateChangeDeckB(event) {
+      if (event.data == YT.PlayerState.ENDED) {
+        deck_b.seekTo(0, true);
+        deck_b.playVideo();
+      }
+    }
+
+    function pauseVideo(player) {
+      eval(player).pauseVideo();
+    }
+
+    function playVideo(player) {
+      eval(player).playVideo();
+    }
+
+    function getPlayerStatus(player) {
+      return eval(player).getPlayerState();
+    }
+
+    function getCurrentTime(player) {
+      return eval(player).getCurrentTime();
+    }
+
+    function seekTo(player, time) {
+      eval(player).seekTo(time, true);
+    }
+
+    function loadVideoById(player, videoId) {
+      eval(player).loadVideoById(videoId);
+    }
+  </script>
+</body>
+</html>
